@@ -1,6 +1,6 @@
 export async function handler(event, context) {
   // REPLACE with your sheet ID:
-  const SHEET_ID = '10nEc8I8XssKCdwbP2A3MOI5TwZQ49Qzg1yGkFDKQkt8';
+  const SHEET_ID = '1--DZT_bx8dNgAPyYlLKM7IjYbKkFoHhG9UDId-3y9cA';
   const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
   try {
