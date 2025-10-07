@@ -1,0 +1,9 @@
+{
+  "name": "learning4kids",
+  "version": "0.1.0",
+  "main": "netlify/functions/chat.js",
+  "type": "module",
+  "dependencies": {
+    "openai": "^4.27.0"
+  }
+}
