@@ -25,9 +25,9 @@ let user = null;
 
 // Use fixed, pre-defined suggestions per spec
 const PREDEFINED_SUGGESTIONS = [
-  "suggest activities",
-  "suggest related possible interests",
-  "suggest how to improve the 3 recent activities next time we do them"
+  "analyze activities and recommend areas for improvement",
+  "suggest related possible interests and or activities",
+  "suggest how to improve the 5 recent activities"
 ];
 
 // ====== TTS State =======
