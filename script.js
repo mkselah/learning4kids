@@ -23,8 +23,12 @@ let messages = [];
 let activeTopicIdx = 0;
 let user = null;
 
-// New: To hold suggestions for last assistant message (index = message #)
-let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
+// Use fixed, pre-defined suggestions per spec
+const PREDEFINED_SUGGESTIONS = [
+  "suggest activities",
+  "suggest related possible interests",
+  "suggest how to improve the 3 recent activities next time we do them"
+];
 
 // ====== TTS State =======
 let ttsState = {
@@ -348,6 +352,21 @@ function renderChat() {
       }
       chatWindow.appendChild(sugg);
     }
+
+    // -- ALWAYS SHOW predefined suggestion buttons after the last assistant message --
+    if (msg.role === "assistant" && idx === lastAssistantIdx) {
+      const sugg = document.createElement('div');
+      sugg.className = 'suggestions';
+      for (let i = 0; i < PREDEFINED_SUGGESTIONS.length; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'sugg-btn';
+        btn.type = 'button';
+        btn.textContent = PREDEFINED_SUGGESTIONS[i];
+        btn.onclick = () => sendSuggestion(i, PREDEFINED_SUGGESTIONS, msg, idx);
+        sugg.appendChild(btn);
+      }
+      chatWindow.appendChild(sugg);
+    }
     // End suggestions
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -495,7 +514,6 @@ function removeStopBtn() {
 async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
   const suggestionText = suggArr[idx];
   if (!suggestionText) return;
-  // Add to db as user message
   await addMessage("user", suggestionText);
   userInput.value = '';
   autoGrow(userInput);
@@ -514,13 +532,8 @@ async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
   });
   const json = await resp.json();
   if (json.reply) {
-    // Add assistant message to DB
     await addMessage("assistant", json.reply);
-    // Store new suggestions for that message
-    // We'll use the last message's id (will be loaded via addMessage)
-    await loadMessages(); // will update messages with new assistant
-    const lastMsg = messages[messages.length - 1];
-    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
+    await loadMessages();
     renderAll();
   } else {
     chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
@@ -567,15 +580,12 @@ chatForm.onsubmit = async (e) => {
   });
   const json = await resp.json();
   if (json.reply) {
-    await addMessage("assistant", json.reply);
-    // Save the suggestions with this message ID (but only after re-loading messages to get the new ID)
-    await loadMessages();
-    const lastMsg = messages[messages.length-1];
-    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
-    renderAll();
-  } else {
-    chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
-  }
+  await addMessage("assistant", json.reply);
+  await loadMessages();
+  renderAll();
+} else {
+  chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
+}
 };
 
 const showSheetBtn = document.getElementById("showSheetBtn");
