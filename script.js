@@ -243,20 +243,19 @@ deleteTopicBtn.onclick = async () => {
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
-  // For suggestions: find last assistant message and see if we have suggestions for it
+
+  // For suggestions: find last assistant message
   let lastAssistantIdx = -1;
   for (let i = messages.length - 1; i >= 0; --i) {
     if (messages[i].role === "assistant") { lastAssistantIdx = i; break; }
   }
 
   messages.forEach((msg, idx) => {
-    // Create bubble row (no longer flex)
+    // Create bubble row
     const div = document.createElement('div');
     div.className = msg.role;
 
-    // --- Message content as before ---
     if (msg.role === "assistant") {
-      // Use Markdown rendering for assistant
       if (window.markdownit) {
         div.innerHTML = window.markdownit().render(msg.content);
       } else {
@@ -265,95 +264,61 @@ function renderChat() {
     } else {
       div.textContent = msg.content;
     }
-
     chatWindow.appendChild(div);
 
-    // ====== Action row for assistant: Listen/Download/Trash in new row below bubble ======
-    if (msg.role === "assistant") {
+    // Action row (Listen/Download/Trash for assistant; Trash for user)
+    if (msg.role === "assistant" || msg.role === "user") {
       const actionRow = document.createElement('div');
       actionRow.className = "action-row";
-
-      // Listen Button
-      const listenBtn = document.createElement('button');
-      listenBtn.textContent = "🔊";
-      listenBtn.title = "Listen to this message (TTS)";
-      listenBtn.className = "listen-btn";
-      listenBtn.onclick = async () => {
-        listenBtn.disabled = true;
-        listenBtn.textContent = "…";
-        // === CHANGES HERE: Remove any previous stop button
-        removeStopBtn();
-        try {
-          await playTTSwithStop(msg.content, "English", actionRow, listenBtn);
-        } catch (e) {
-          alert("Could not play audio: " + (e.message||e));
-        }
+      if (msg.role === "assistant") {
+        // Listen
+        const listenBtn = document.createElement('button');
         listenBtn.textContent = "🔊";
-        listenBtn.disabled = false;
-        removeStopBtn();
-      };
-      actionRow.appendChild(listenBtn);
-
-      // ===== Download MP3 Button =====
-      const downloadBtn = document.createElement('button');
-      downloadBtn.textContent = "⬇️";
-      downloadBtn.title = "Download this message as MP3";
-      downloadBtn.className = "download-btn";
-      downloadBtn.onclick = async () => {
-        downloadBtn.disabled = true;
-        downloadBtn.textContent = "…";
-        try {
-          await downloadTTS(msg.content, "English");
-        } catch (e) {
-          alert("Download failed: " + (e.message||e));
-        }
+        listenBtn.title = "Listen to this message (TTS)";
+        listenBtn.className = "listen-btn";
+        listenBtn.onclick = async () => {
+          listenBtn.disabled = true;
+          listenBtn.textContent = "…";
+          removeStopBtn();
+          try {
+            await playTTSwithStop(msg.content, "English", actionRow, listenBtn);
+          } catch (e) {
+            alert("Could not play audio: " + (e.message||e));
+          }
+          listenBtn.textContent = "🔊";
+          listenBtn.disabled = false;
+          removeStopBtn();
+        };
+        actionRow.appendChild(listenBtn);
+        // Download
+        const downloadBtn = document.createElement('button');
         downloadBtn.textContent = "⬇️";
-        downloadBtn.disabled = false;
-      };
-      actionRow.appendChild(downloadBtn);
-
-      // Delete button
-      const delBtn = document.createElement('button');
-      delBtn.textContent = "🗑️";
-      delBtn.title = "Delete this message";
-      delBtn.className = "msg-delete-btn";
-      delBtn.onclick = () => deleteMessage(msg.id);
-      actionRow.appendChild(delBtn);
-
-      chatWindow.appendChild(actionRow);
-    }
-
-    // ====== If user message, action row is just trash ======
-    if (msg.role === "user") {
-      const actionRow = document.createElement('div');
-      actionRow.className = "action-row";
-      const delBtn = document.createElement('button');
-      delBtn.textContent = "🗑️";
-      delBtn.title = "Delete this message";
-      delBtn.className = "msg-delete-btn";
-      delBtn.onclick = () => deleteMessage(msg.id);
-      actionRow.appendChild(delBtn);
-      chatWindow.appendChild(actionRow);
-    }
-
-    // ---- SUGGESTION BUTTONS after [the last assistant message only, and only if we have suggestions] ----
-    if (msg.role === "assistant" && idx === lastAssistantIdx && lastSuggestions && lastSuggestions[msg.id]) {
-      const suggArr = lastSuggestions[msg.id];
-      const sugg = document.createElement('div');
-      sugg.className = 'suggestions';
-      for(let i=0; i<3; ++i) {
-        const btn = document.createElement('button');
-        btn.className = 'sugg-btn';
-        btn.type = 'button';
-        btn.textContent = suggArr[i] || "";
-        btn.disabled = !suggArr[i];
-        btn.onclick = () => sendSuggestion(i, suggArr, msg, idx);
-        sugg.appendChild(btn);
+        downloadBtn.title = "Download this message as MP3";
+        downloadBtn.className = "download-btn";
+        downloadBtn.onclick = async () => {
+          downloadBtn.disabled = true;
+          downloadBtn.textContent = "…";
+          try {
+            await downloadTTS(msg.content, "English");
+          } catch (e) {
+            alert("Download failed: " + (e.message||e));
+          }
+          downloadBtn.textContent = "⬇️";
+          downloadBtn.disabled = false;
+        };
+        actionRow.appendChild(downloadBtn);
       }
-      chatWindow.appendChild(sugg);
+      // Delete for both
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "🗑️";
+      delBtn.title = "Delete this message";
+      delBtn.className = "msg-delete-btn";
+      delBtn.onclick = () => deleteMessage(msg.id);
+      actionRow.appendChild(delBtn);
+      chatWindow.appendChild(actionRow);
     }
 
-    // -- ALWAYS SHOW predefined suggestion buttons after the last assistant message --
+    // SUGGESTIONS: Show our 3 static buttons after the *last* assistant only
     if (msg.role === "assistant" && idx === lastAssistantIdx) {
       const sugg = document.createElement('div');
       sugg.className = 'suggestions';
@@ -367,8 +332,23 @@ function renderChat() {
       }
       chatWindow.appendChild(sugg);
     }
-    // End suggestions
   });
+
+  // ------------ If there are NO assistant messages (eg. right after opening topic, or brand new), show suggestion buttons at bottom -----------
+  if (messages.length === 0 || lastAssistantIdx === -1) {
+    const sugg = document.createElement('div');
+    sugg.className = 'suggestions';
+    for (let i = 0; i < PREDEFINED_SUGGESTIONS.length; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'sugg-btn';
+      btn.type = 'button';
+      btn.textContent = PREDEFINED_SUGGESTIONS[i];
+      btn.onclick = () => sendSuggestion(i, PREDEFINED_SUGGESTIONS, {}, -1);
+      sugg.appendChild(btn);
+    }
+    chatWindow.appendChild(sugg);
+  }
+
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
