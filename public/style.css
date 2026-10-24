@@ -32,3 +32,14 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .card-avg { grid-column: 1 / -1; border-left: 5px solid #2d6cdf; }
 .card-avg .chart-box { height: 260px; }
 .card-sub { font-weight: 400; color: #888; font-size: 0.85em; }
+/* Needed because .grid { display: grid } would otherwise override [hidden] */
+[hidden] { display: none !important; }
+/* Trend arrows in the top cards */
+.kpi-value { display: flex; align-items: center; gap: 0.35em; }
+.trend { font-size: 0.65em; }
+.trend.up { color: #2e9d4f; }
+.trend.down { color: #d64545; }
+.trend.flat { color: #999; }
+.kpi-sub { color: #999; font-size: 0.8em; margin-top: 0.2em; }
+/* Show/hide graphs button */
+.toggle { font-size: 0.85em; padding: 0.25em 0.7em; font-weight: 400; }

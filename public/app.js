@@ -135,24 +135,59 @@ function filteredRows() {
   if (i === -1 || val === "") return data.rows;
   return data.rows.filter((r) => String(r[i] ?? "(blank)") === val);
 }
-// ---------- Rendering ----------
-function render() {
-  const rows = filteredRows();
-  renderKpis(rows);
-  renderSections(rows);
-  renderTable(rows);
+// ---------- Top cards: one average per section + trend arrow ----------
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+const TREND_EPS = 0.005; // smaller differences count as "no change"
+// "YYYY-MM-DD" shifted by days/months → "YYYY-MM-DD"
+function shiftISO(iso, { days = 0, months = 0 }) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCMonth(d.getUTCMonth() + months);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
-function renderKpis(rows) {
-  const cards = [["Rows", rows.length]];
-  for (const c of data.columns.filter((c) => c.type === "number").slice(0, 3)) {
-    const vals = rows.map((r) => r[idx(c.name)]).filter((v) => typeof v === "number");
-    const sum = vals.reduce((a, b) => a + b, 0);
-    cards.push([`${c.name} · total`, sum], [`${c.name} · average`, vals.length ? sum / vals.length : NaN]);
+// Overall average + last 14 days vs. the 2 months before that
+function sectionStats(rows, cols) {
+  const { labels, values } = series(rows, cols);
+  const all = mean(values);
+  const hasDates = data.columns.some((c) => c.type === "date");
+  if (!hasDates || !labels.length) return { all, recent: NaN, prev: NaN, trend: null };
+  // Anchored on the newest date in the data. To anchor on today instead, use:
+  // const end = new Date().toISOString().slice(0, 10);
+  const end = labels[labels.length - 1];
+  const recentFrom = shiftISO(end, { days: -13 });         // last 14 days incl. end
+  const prevFrom = shiftISO(recentFrom, { months: -2 });   // 2 months before that
+  const recentVals = [], prevVals = [];
+  labels.forEach((d, i) => {
+    if (d > end) return;
+    if (d >= recentFrom) recentVals.push(values[i]);
+    else if (d >= prevFrom) prevVals.push(values[i]);
+  });
+  const recent = mean(recentVals), prev = mean(prevVals);
+  let trend = null;
+  if (Number.isFinite(recent) && Number.isFinite(prev)) {
+    trend = recent > prev + TREND_EPS ? 1 : recent < prev - TREND_EPS ? -1 : 0;
   }
-  $("kpis").innerHTML = cards
-    .map(([label, v]) =>
-      `<div class="kpi"><div class="kpi-value">${fmt(v)}</div><div class="kpi-label">${esc(label)}</div></div>`)
-    .join("");
+  return { all, recent, prev, trend };
+}
+const TREND = {
+  1: ["▲", "up", "Improving"],
+  "-1": ["▼", "down", "Getting worse"],
+  0: ["▶", "flat", "No change"],
+};
+function renderKpis(rows) {
+  $("kpis").innerHTML = SECTIONS.map((sec) => {
+    const found = sec.cols.map(findCol).filter((i) => i !== -1);
+    const st = found.length ? sectionStats(rows, found) : { all: NaN, trend: null };
+    const t = st.trend == null ? null : TREND[st.trend];
+    const arrow = t
+      ? `<span class="trend ${t[1]}" title="${t[2]}">${t[0]}</span>`
+      : `<span class="trend flat" title="Not enough data for a trend">–</span>`;
+    return `<div class="kpi">
+        <div class="kpi-value">${fmt(st.all)} ${arrow}</div>
+        <div class="kpi-label">${esc(sec.title)}</div>
+        <div class="kpi-sub">14 d: ${fmt(st.recent)} · prev 2 mo: ${fmt(st.prev)}</div>
+      </div>`;
+  }).join("");
 }
 // Average value per date (or per row number if the sheet has no date column).
 // `cols` can be one column index or an array of them. With several columns,
@@ -214,76 +249,71 @@ function lineConfig(label, rows, cols, color, fill = false) {
     },
   };
 }
-function lineConfig(label, rows, yi, color) {
-  const { labels, values } = series(rows, yi);
-  return {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label,
-        data: values,
-        borderColor: color,
-        backgroundColor: color,
-        tension: 0.25,
-        pointRadius: 3,
-        spanGaps: true,
-      }],
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false } },
-        y: { min: 1, max: 5, ticks: { stepSize: 1 }, grid: { display: false } },
-      },
-    },
-  };
-}
+// Which sections are expanded (remembered across reloads)
+const openSections = new Set(JSON.parse(localStorage.getItem("openSections") || "[]"));
+const saveOpen = () => localStorage.setItem("openSections", JSON.stringify([...openSections]));
 function renderSections(rows) {
   instances.forEach((c) => c.destroy());
   instances = [];
   const root = $("sections");
   root.innerHTML = "";
   SECTIONS.forEach((sec, s) => {
+    const color = COLORS[s % COLORS.length];
+    const found = sec.cols.map(findCol).filter((i) => i !== -1);
+    const label = `Average · ${sec.title}`;
     const section = document.createElement("section");
     section.className = "category";
-    section.innerHTML = `<h2>${esc(sec.title)}</h2><div class="grid"></div>`;
-    const grid = section.querySelector(".grid");
-    const color = COLORS[s % COLORS.length];
-    // --- Section average chart (first, full width) ---
-    const found = sec.cols.map(findCol).filter((i) => i !== -1);
+    section.innerHTML = `<h2>${esc(sec.title)}</h2>
+      <div class="grid">
+        <div class="card card-avg" style="border-left-color:${color}">
+          <div class="card-head"><span>${esc(label)}</span><button class="toggle"></button></div>
+          ${found.length
+            ? `<div class="chart-box"><canvas></canvas></div>`
+            : `<div class="missing">None of this section's columns were found in this tab</div>`}
+        </div>
+      </div>
+      <div class="grid details"></div>`;
     if (found.length) {
-      const label = `Average · ${sec.title}`;
-      const card = document.createElement("div");
-      card.className = "card card-avg";
-      card.style.borderLeftColor = color;
-      card.innerHTML = `<div class="card-head"><span>${esc(label)}</span>
-          <span class="card-sub">${found.length} of ${sec.cols.length} columns</span></div>
-        <div class="chart-box"><canvas></canvas></div>`;
-      grid.appendChild(card);
-      instances.push(new Chart(card.querySelector("canvas"),
+      instances.push(new Chart(section.querySelector("canvas"),
         lineConfig(label, rows, found, color, true)));
     }
-    // --- One chart per column (as before) ---
-    for (const name of sec.cols) {
-      const yi = findCol(name);
-      const card = document.createElement("div");
-      card.className = "card";
-      if (yi === -1) {
-        card.innerHTML = `<div class="card-head"><span>${esc(name)}</span></div>
-          <div class="missing">Column "${esc(name)}" not found in this tab</div>`;
-        grid.appendChild(card);
-        continue;
-      }
-      card.innerHTML = `<div class="card-head"><span>${esc(data.columns[yi].name)}</span></div>
-        <div class="chart-box"><canvas></canvas></div>`;
-      grid.appendChild(card);
-      instances.push(new Chart(card.querySelector("canvas"),
-        lineConfig(data.columns[yi].name, rows, yi, color)));
-    }
+    // --- Fold / unfold the per-column graphs ---
+    const btn = section.querySelector(".toggle");
+    const details = section.querySelector(".details");
+    const update = () => {
+      const open = openSections.has(sec.title);
+      details.hidden = !open;
+      btn.textContent = open ? "Hide graphs ▴" : `Show ${sec.cols.length} graphs ▾`;
+      // Charts are only built the first time the section is opened
+      if (open && !details.childElementCount) renderColumnCharts(sec, details, rows, color);
+    };
+    btn.onclick = () => {
+      if (openSections.has(sec.title)) openSections.delete(sec.title);
+      else openSections.add(sec.title);
+      saveOpen();
+      update();
+    };
+    update();
     root.appendChild(section);
   });
+}
+function renderColumnCharts(sec, grid, rows, color) {
+  for (const name of sec.cols) {
+    const yi = findCol(name);
+    const card = document.createElement("div");
+    card.className = "card";
+    if (yi === -1) {
+      card.innerHTML = `<div class="card-head"><span>${esc(name)}</span></div>
+        <div class="missing">Column "${esc(name)}" not found in this tab</div>`;
+      grid.appendChild(card);
+      continue;
+    }
+    const colName = data.columns[yi].name;
+    card.innerHTML = `<div class="card-head"><span>${esc(colName)}</span></div>
+      <div class="chart-box"><canvas></canvas></div>`;
+    grid.appendChild(card);
+    instances.push(new Chart(card.querySelector("canvas"), lineConfig(colName, rows, yi, color)));
+  }
 }
 function renderTable(rows) {
   const cols = data.columns;
