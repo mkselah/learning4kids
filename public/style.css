@@ -12,13 +12,15 @@ button.primary { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
 .kpi { padding: 0.9em 1em; }
 .kpi-value { font-size: 1.6em; font-weight: 700; }
 .kpi-label { color: #666; font-size: 0.9em; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1em; padding: 0 1em 1em; }
+/* Category sections */
+.category { margin-bottom: 0.5em; }
+.category h2 { margin: 0.6em 1em 0.6em; padding-bottom: 0.3em; font-size: 1.2em; border-bottom: 2px solid #2d6cdf; color: #2d6cdf; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1em; padding: 0 1em 1em; }
 .card { padding: 0.8em; }
 .card-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 0.4em; }
-.card-head button { border: none; background: none; color: #999; padding: 0 0.3em; }
-.chart-box { position: relative; height: 280px; }
+.chart-box { position: relative; height: 220px; }
+.missing { color: #b00; font-size: 0.9em; padding: 1em 0; }
 .panel { background: #fff; margin: 0 1em 1em; padding: 0.8em 1em; border: 1px solid #ddd; border-radius: 10px; }
-.panel .row { margin-top: 0.8em; }
 summary { cursor: pointer; font-weight: 600; }
 .table-wrap { overflow: auto; max-height: 500px; }
 table { border-collapse: collapse; width: 100%; font-size: 0.9em; }

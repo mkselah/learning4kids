@@ -1,10 +1,57 @@
 const $ = (id) => document.getElementById(id);
 let data = { columns: [], rows: [] };
 let tab = "";
-let charts = [];    // chart settings for the current tab
 let instances = []; // Chart.js objects currently on screen
 const COLORS = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
                 "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac"];
+// ---------- Sections (column names as in the sheet header) ----------
+const SECTIONS = [
+  { title: "De tre", cols: ["Hjerne", "Hjerte", "Krop"] },
+  { title: "Motivation", cols: [
+    "Enjoyment/Fun",
+    "Teamwork & Kindness",
+    "Handling Mistakes/Challenges",
+    "Confidence/Bravery",
+    "Listening to Coach/Instructions",
+  ] },
+  { title: "Skills", cols: [
+    "Dribbling skills",
+    "Passing skills",
+    "Finishing skills",
+    "Shooting skills",
+    "Ball Control/First Touch skills",
+    "Top før bund skills",
+    "Finter skills",
+  ] },
+  { title: "Boldholder", cols: [
+    "Teknik(boldholder)",
+    "Bevægelse(boldholder)",
+    "Scanning(boldholder)",
+    "Timing(boldholder)",
+    "Maskering(boldholder)",
+    "Positionering(boldholder)",
+  ] },
+  { title: "Medspiller", cols: [
+    "Positionering(medspiller)",
+    "Scanning(medspiller)",
+    "Bevægelse(medspiller)",
+    "Maskering(medspiller)",
+    "Teknik(medspiller)",
+    "Timing(medspiller)",
+  ] },
+  { title: "Presspiller", cols: [
+    "Positionering(presspiller)",
+    "Teknik (presspiller)",
+    "Bevægelse(presspiller)",
+    "Timing(presspiller)",
+    "Scanning(presspiller)",
+  ] },
+  { title: "Støttespiller", cols: [
+    "Positionering(støttespiller)",
+    "Scanning(støttespiller)",
+    "Bevægelse(støttespiller)",
+  ] },
+];
 async function api(path, body = {}) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await fetch(path, {
@@ -31,10 +78,19 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const opt = (v, label = v) => `<option value="${esc(v)}">${esc(label)}</option>`;
 const idx = (name) => data.columns.findIndex((c) => c.name === name);
-const colType = (name) => data.columns[idx(name)]?.type;
 const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "–");
 const setStatus = (t) => ($("status").textContent = t);
 const showError = (e) => setStatus("Error: " + e.message);
+// Match column names ignoring spaces and upper/lower case
+const norm = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, "");
+const findCol = (name) => data.columns.findIndex((c) => norm(c.name) === norm(name));
+// Accept numbers even if the column was detected as text (e.g. "3" or "3,5")
+function toNum(v) {
+  if (typeof v === "number") return v;
+  if (v == null || v === "") return null;
+  const n = parseFloat(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 // ---------- Loading ----------
 async function init() {
   try {
@@ -54,39 +110,17 @@ async function loadTab() {
   localStorage.setItem("tab", tab);
   setStatus("Loading data…");
   data = await api("/api/data", { tab });
-  charts = JSON.parse(localStorage.getItem("charts:" + tab) || "null") || defaultCharts();
   fillSelectors();
   render();
   setStatus(`${data.rows.length} rows · loaded ${new Date().toLocaleTimeString()}`);
 }
 $("tabSelect").onchange = () => loadTab().catch(showError);
 $("reloadBtn").onclick = () => loadTab().catch(showError);
-// ---------- Default charts ----------
-function defaultCharts() {
-  const distinct = (name) => new Set(data.rows.map((r) => r[idx(name)])).size;
-  const nums = data.columns.filter((c) => c.type === "number").map((c) => c.name);
-  const date = data.columns.find((c) => c.type === "date")?.name;
-  const cat = data.columns.find((c) => c.type === "text" && distinct(c.name) >= 2 && distinct(c.name) <= 30)?.name;
-  const out = [];
-  for (const y of nums.slice(0, 4)) {
-    if (date) out.push({ type: "line", x: date, y, agg: "sum", group: "day" });
-    else if (cat) out.push({ type: "bar", x: cat, y, agg: "sum" });
-  }
-  if (cat) out.push({ type: "doughnut", x: cat, y: "", agg: "count" });
-  return out;
-}
-function saveCharts() {
-  localStorage.setItem("charts:" + tab, JSON.stringify(charts));
-}
-// ---------- Selectors & filter ----------
+// ---------- Filter ----------
 function fillSelectors() {
-  const cols = data.columns;
   $("filterCol").innerHTML = opt("", "(none)") +
-    cols.filter((c) => c.type === "text").map((c) => opt(c.name)).join("");
+    data.columns.filter((c) => c.type === "text").map((c) => opt(c.name)).join("");
   $("filterVal").innerHTML = opt("", "All");
-  $("cX").innerHTML = cols.map((c) => opt(c.name, `${c.name} (${c.type})`)).join("");
-  $("cY").innerHTML = opt("", "(count rows)") +
-    cols.filter((c) => c.type === "number").map((c) => opt(c.name)).join("");
 }
 $("filterCol").onchange = () => {
   const i = idx($("filterCol").value);
@@ -101,32 +135,11 @@ function filteredRows() {
   if (i === -1 || val === "") return data.rows;
   return data.rows.filter((r) => String(r[i] ?? "(blank)") === val);
 }
-// ---------- Add / reset charts ----------
-$("addBtn").onclick = () => {
-  const cfg = {
-    type: $("cType").value,
-    x: $("cX").value,
-    y: $("cY").value,
-    agg: $("cAgg").value,
-    group: $("cGroup").value,
-  };
-  if (cfg.type === "scatter" && (!cfg.y || colType(cfg.x) !== "number")) {
-    return alert("Scatter needs a number column for both X and Y.");
-  }
-  charts.push(cfg);
-  saveCharts();
-  render();
-};
-$("resetBtn").onclick = () => {
-  localStorage.removeItem("charts:" + tab);
-  charts = defaultCharts();
-  render();
-};
 // ---------- Rendering ----------
 function render() {
   const rows = filteredRows();
   renderKpis(rows);
-  renderCharts(rows);
+  renderSections(rows);
   renderTable(rows);
 }
 function renderKpis(rows) {
@@ -141,87 +154,78 @@ function renderKpis(rows) {
       `<div class="kpi"><div class="kpi-value">${fmt(v)}</div><div class="kpi-label">${esc(label)}</div></div>`)
     .join("");
 }
-function chartTitle(cfg) {
-  if (cfg.type === "scatter") return `${cfg.y} vs ${cfg.x}`;
-  return `${cfg.y ? `${cfg.agg} of ${cfg.y}` : "Count of rows"} by ${cfg.x}`;
-}
-function reduce(vals, agg) {
-  if (agg === "count") return vals.length;
-  if (!vals.length) return null;
-  const sum = vals.reduce((a, b) => a + b, 0);
-  return { sum, avg: sum / vals.length, min: Math.min(...vals), max: Math.max(...vals) }[agg];
-}
-function aggregate(rows, xi, yi, agg, group, xType) {
+// Average value per date (or per row number if the sheet has no date column)
+function series(rows, yi) {
+  const di = data.columns.findIndex((c) => c.type === "date");
   const groups = new Map();
-  for (const r of rows) {
-    let k = r[xi];
-    if (k == null) k = "(blank)";
-    else if (xType === "date") k = k.slice(0, { year: 4, month: 7, day: 10 }[group] || 10);
-    if (!groups.has(k)) groups.set(k, []);
-    if (yi === -1) groups.get(k).push(1);
-    else if (typeof r[yi] === "number") groups.get(k).push(r[yi]);
-  }
-  let entries = [...groups].map(([k, vals]) => [k, reduce(vals, agg)]);
-  if (xType === "text") entries = entries.sort((a, b) => b[1] - a[1]).slice(0, 30); // top 30
-  else entries.sort((a, b) => (a[0] > b[0] ? 1 : -1));
-  return { labels: entries.map((e) => String(e[0])), values: entries.map((e) => e[1]) };
+  rows.forEach((r, n) => {
+    const y = toNum(r[yi]);
+    if (y == null) return;
+    let key;
+    if (di === -1) key = String(n + 1);
+    else if (r[di]) key = String(r[di]).slice(0, 10);
+    else return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(y);
+  });
+  let entries = [...groups].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length]);
+  if (di !== -1) entries.sort((a, b) => (a[0] > b[0] ? 1 : -1));
+  return { labels: entries.map((e) => e[0]), values: entries.map((e) => e[1]) };
 }
-function chartConfig(cfg, rows) {
-  const xi = idx(cfg.x);
-  const yi = cfg.y ? idx(cfg.y) : -1;
-  if (cfg.type === "scatter") {
-    const points = rows
-      .filter((r) => typeof r[xi] === "number" && typeof r[yi] === "number")
-      .map((r) => ({ x: r[xi], y: r[yi] }));
-    return {
-      type: "scatter",
-      data: { datasets: [{ label: cfg.y, data: points, backgroundColor: COLORS[0] }] },
-      options: {
-        maintainAspectRatio: false,
-        scales: {
-          x: { title: { display: true, text: cfg.x } },
-          y: { title: { display: true, text: cfg.y } },
-        },
-      },
-    };
-  }
-  const agg = cfg.y ? cfg.agg : "count";
-  const { labels, values } = aggregate(rows, xi, yi, agg, cfg.group, colType(cfg.x));
-  const round = cfg.type === "pie" || cfg.type === "doughnut";
+function lineConfig(label, rows, yi, color) {
+  const { labels, values } = series(rows, yi);
   return {
-    type: cfg.type,
+    type: "line",
     data: {
       labels,
       datasets: [{
-        label: chartTitle(cfg),
+        label,
         data: values,
-        backgroundColor: round ? labels.map((_, i) => COLORS[i % COLORS.length]) : COLORS[0],
-        borderColor: round ? "#fff" : COLORS[0],
+        borderColor: color,
+        backgroundColor: color,
         tension: 0.25,
+        pointRadius: 3,
+        spanGaps: true,
       }],
     },
-    options: { maintainAspectRatio: false, plugins: { legend: { display: round } } },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { min: 1, max: 5, ticks: { stepSize: 1 }, grid: { display: false } },
+      },
+    },
   };
 }
-function renderCharts(rows) {
+function renderSections(rows) {
   instances.forEach((c) => c.destroy());
   instances = [];
-  const grid = $("charts");
-  grid.innerHTML = "";
-  charts.forEach((cfg, n) => {
-    if (idx(cfg.x) === -1 || (cfg.y && idx(cfg.y) === -1)) return; // column no longer exists
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <div class="card-head"><span>${esc(chartTitle(cfg))}</span><button title="Remove">✕</button></div>
-      <div class="chart-box"><canvas></canvas></div>`;
-    card.querySelector("button").onclick = () => {
-      charts.splice(n, 1);
-      saveCharts();
-      render();
-    };
-    grid.appendChild(card);
-    instances.push(new Chart(card.querySelector("canvas"), chartConfig(cfg, rows)));
+  const root = $("sections");
+  root.innerHTML = "";
+  SECTIONS.forEach((sec, s) => {
+    const section = document.createElement("section");
+    section.className = "category";
+    section.innerHTML = `<h2>${esc(sec.title)}</h2><div class="grid"></div>`;
+    const grid = section.querySelector(".grid");
+    const color = COLORS[s % COLORS.length];
+    for (const name of sec.cols) {
+      const yi = findCol(name);
+      const card = document.createElement("div");
+      card.className = "card";
+      if (yi === -1) {
+        card.innerHTML = `<div class="card-head"><span>${esc(name)}</span></div>
+          <div class="missing">Column "${esc(name)}" not found in this tab</div>`;
+        grid.appendChild(card);
+        continue;
+      }
+      card.innerHTML = `<div class="card-head"><span>${esc(data.columns[yi].name)}</span></div>
+        <div class="chart-box"><canvas></canvas></div>`;
+      grid.appendChild(card);
+      instances.push(new Chart(card.querySelector("canvas"),
+        lineConfig(data.columns[yi].name, rows, yi, color)));
+    }
+    root.appendChild(section);
   });
 }
 function renderTable(rows) {
