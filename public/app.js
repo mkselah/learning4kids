@@ -315,6 +315,13 @@ function renderColumnCharts(sec, grid, rows, color) {
     instances.push(new Chart(card.querySelector("canvas"), lineConfig(colName, rows, yi, color)));
   }
 }
+// ---------- Draw everything ----------
+function render() {
+  const rows = filteredRows();
+  renderKpis(rows);
+  renderSections(rows);
+  renderTable(rows);
+}
 function renderTable(rows) {
   const cols = data.columns;
   $("dataTable").innerHTML =
