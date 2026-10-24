@@ -154,23 +154,65 @@ function renderKpis(rows) {
       `<div class="kpi"><div class="kpi-value">${fmt(v)}</div><div class="kpi-label">${esc(label)}</div></div>`)
     .join("");
 }
-// Average value per date (or per row number if the sheet has no date column)
-function series(rows, yi) {
+// Average value per date (or per row number if the sheet has no date column).
+// `cols` can be one column index or an array of them. With several columns,
+// each column is averaged per date first, then those averages are averaged
+// (so every column counts equally).
+function series(rows, cols) {
+  const list = Array.isArray(cols) ? cols : [cols];
   const di = data.columns.findIndex((c) => c.type === "date");
-  const groups = new Map();
+  const groups = new Map(); // key -> per column [sum, count]
   rows.forEach((r, n) => {
-    const y = toNum(r[yi]);
-    if (y == null) return;
     let key;
     if (di === -1) key = String(n + 1);
     else if (r[di]) key = String(r[di]).slice(0, 10);
     else return;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(y);
+    list.forEach((yi, j) => {
+      const y = toNum(r[yi]);
+      if (y == null) return;
+      if (!groups.has(key)) groups.set(key, list.map(() => [0, 0]));
+      const g = groups.get(key)[j];
+      g[0] += y;
+      g[1]++;
+    });
   });
-  let entries = [...groups].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length]);
+  let entries = [...groups].map(([k, g]) => {
+    const avgs = g.filter(([, c]) => c > 0).map(([s, c]) => s / c);
+    return [k, avgs.reduce((a, b) => a + b, 0) / avgs.length];
+  });
   if (di !== -1) entries.sort((a, b) => (a[0] > b[0] ? 1 : -1));
   return { labels: entries.map((e) => e[0]), values: entries.map((e) => e[1]) };
+}
+function lineConfig(label, rows, cols, color, fill = false) {
+  const { labels, values } = series(rows, cols);
+  return {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data: values,
+        borderColor: color,
+        backgroundColor: fill ? color + "33" : color, // light fill for average chart
+        fill,
+        borderWidth: fill ? 3 : 2,
+        tension: 0.25,
+        pointRadius: 3,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => `${label}: ${fmt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { min: 1, max: 5, ticks: { stepSize: 1 }, grid: { display: false } },
+      },
+    },
+  };
 }
 function lineConfig(label, rows, yi, color) {
   const { labels, values } = series(rows, yi);
@@ -209,6 +251,21 @@ function renderSections(rows) {
     section.innerHTML = `<h2>${esc(sec.title)}</h2><div class="grid"></div>`;
     const grid = section.querySelector(".grid");
     const color = COLORS[s % COLORS.length];
+    // --- Section average chart (first, full width) ---
+    const found = sec.cols.map(findCol).filter((i) => i !== -1);
+    if (found.length) {
+      const label = `Average · ${sec.title}`;
+      const card = document.createElement("div");
+      card.className = "card card-avg";
+      card.style.borderLeftColor = color;
+      card.innerHTML = `<div class="card-head"><span>${esc(label)}</span>
+          <span class="card-sub">${found.length} of ${sec.cols.length} columns</span></div>
+        <div class="chart-box"><canvas></canvas></div>`;
+      grid.appendChild(card);
+      instances.push(new Chart(card.querySelector("canvas"),
+        lineConfig(label, rows, found, color, true)));
+    }
+    // --- One chart per column (as before) ---
     for (const name of sec.cols) {
       const yi = findCol(name);
       const card = document.createElement("div");

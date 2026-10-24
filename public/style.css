@@ -28,3 +28,7 @@ th, td { padding: 0.35em 0.6em; border-bottom: 1px solid #eee; text-align: left;
 th { background: #fafafa; position: sticky; top: 0; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+/* Section average chart: full width, highlighted */
+.card-avg { grid-column: 1 / -1; border-left: 5px solid #2d6cdf; }
+.card-avg .chart-box { height: 260px; }
+.card-sub { font-weight: 400; color: #888; font-size: 0.85em; }
