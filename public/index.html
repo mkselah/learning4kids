@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header><h1 id="title">Dashboard</h1></header>
+  <section class="controls row">
+    <select id="tabSelect"></select>
+    <button id="reloadBtn">↻ Refresh</button>
+    <label>Filter <select id="filterCol"></select> <select id="filterVal"></select></label>
+    <span id="status"></span>
+  </section>
+  <section id="kpis" class="kpis"></section>
+  <details class="panel">
+    <summary>➕ Add chart</summary>
+    <div class="row">
+      <label>Type
+        <select id="cType">
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+          <option value="doughnut">Doughnut</option>
+          <option value="scatter">Scatter</option>
+        </select>
+      </label>
+      <label>X / group by <select id="cX"></select></label>
+      <label>Y value <select id="cY"></select></label>
+      <label>Calculation
+        <select id="cAgg">
+          <option value="sum">Sum</option>
+          <option value="avg">Average</option>
+          <option value="count">Count</option>
+          <option value="min">Min</option>
+          <option value="max">Max</option>
+        </select>
+      </label>
+      <label>Dates by
+        <select id="cGroup">
+          <option value="day">Day</option>
+          <option value="month">Month</option>
+          <option value="year">Year</option>
+        </select>
+      </label>
+      <button id="addBtn" class="primary">Add</button>
+      <button id="resetBtn">Reset to default charts</button>
+    </div>
+  </details>
+  <section id="charts" class="grid"></section>
+  <details class="panel">
+    <summary>📋 Data</summary>
+    <p id="tableNote"></p>
+    <div class="table-wrap"><table id="dataTable"></table></div>
+  </details>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="app.js"></script>
+</body>
+</html>

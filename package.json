@@ -1,9 +1,14 @@
 {
-  "name": "learning4kids",
+  "name": "learning4kids-dashboard",
   "version": "0.1.0",
-  "main": "netlify/functions/chat.js",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --env-file=.env server.js"
+  },
+  "engines": { "node": ">=20.6" },
   "dependencies": {
-    "openai": "^4.27.0"
+    "google-auth-library": "^9.15.0"
   }
 }

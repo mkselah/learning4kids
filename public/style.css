@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f3f5f9; color: #222; }
+header { background: #2d6cdf; color: #fff; padding: 0.6em 1em; }
+header h1 { margin: 0; font-size: 1.3em; }
+.row { display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
+.controls { background: #fff; padding: 0.8em 1em; border-bottom: 1px solid #ddd; }
+select, button { padding: 0.4em 0.8em; font-size: 1em; border-radius: 6px; border: 1px solid #bbb; background: #fff; cursor: pointer; }
+button.primary { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
+#status { color: #666; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1em; padding: 1em; }
+.kpi, .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.kpi { padding: 0.9em 1em; }
+.kpi-value { font-size: 1.6em; font-weight: 700; }
+.kpi-label { color: #666; font-size: 0.9em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1em; padding: 0 1em 1em; }
+.card { padding: 0.8em; }
+.card-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 0.4em; }
+.card-head button { border: none; background: none; color: #999; padding: 0 0.3em; }
+.chart-box { position: relative; height: 280px; }
+.panel { background: #fff; margin: 0 1em 1em; padding: 0.8em 1em; border: 1px solid #ddd; border-radius: 10px; }
+.panel .row { margin-top: 0.8em; }
+summary { cursor: pointer; font-weight: 600; }
+.table-wrap { overflow: auto; max-height: 500px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+th, td { padding: 0.35em 0.6em; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
+th { background: #fafafa; position: sticky; top: 0; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
