@@ -1,12 +1,24 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: #f3f5f9; color: #222; }
-header { background: #2d6cdf; color: #fff; padding: 0.6em 1em; }
+header { background: #2d6cdf; color: #fff; padding: 0.6em 1em; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6em; }
 header h1 { margin: 0; font-size: 1.3em; }
 .row { display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
 .controls { background: #fff; padding: 0.8em 1em; border-bottom: 1px solid #ddd; }
 select, button { padding: 0.4em 0.8em; font-size: 1em; border-radius: 6px; border: 1px solid #bbb; background: #fff; cursor: pointer; }
 button.primary { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
 #status { color: #666; }
+/* Weekly / Monthly switch */
+.switch { display: flex; gap: 0; }
+.switch button { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.7); border-radius: 0; font-weight: 600; }
+.switch button:first-child { border-radius: 6px 0 0 6px; }
+.switch button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.switch button.active { background: #fff; color: #2d6cdf; }
+/* Quick filter buttons */
+.filter-group { display: flex; align-items: center; gap: 0.3em; flex-wrap: wrap; }
+.filter-label { color: #666; font-size: 0.9em; margin-right: 0.2em; }
+.chip { padding: 0.25em 0.75em; font-size: 0.9em; border-radius: 999px; }
+.chip.active { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
+.missing-inline { color: #b00; font-size: 0.85em; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1em; padding: 1em; }
 .kpi, .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .kpi { padding: 0.9em 1em; }
@@ -16,6 +28,7 @@ button.primary { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
 .category { margin-bottom: 0.5em; }
 .category h2 { margin: 0.6em 1em 0.6em; padding-bottom: 0.3em; font-size: 1.2em; border-bottom: 2px solid #2d6cdf; color: #2d6cdf; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1em; padding: 0 1em 1em; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
 .card { padding: 0.8em; }
 .card-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 0.4em; }
 .chart-box { position: relative; height: 220px; }
@@ -27,11 +40,11 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
 th, td { padding: 0.35em 0.6em; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
 th { background: #fafafa; position: sticky; top: 0; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
-@media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 500px) { .grid, .grid.wide { grid-template-columns: 1fr; } }
 /* Section average chart: full width, highlighted */
 .card-avg { grid-column: 1 / -1; border-left: 5px solid #2d6cdf; }
 .card-avg .chart-box { height: 260px; }
-.card-sub { font-weight: 400; color: #888; font-size: 0.85em; }
+.card-sub { font-weight: 400; color: #888; font-size: 0.85em; margin-bottom: 0.4em; }
 /* Needed because .grid { display: grid } would otherwise override [hidden] */
 [hidden] { display: none !important; }
 /* Trend arrows in the top cards */
@@ -43,3 +56,21 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .kpi-sub { color: #999; font-size: 0.8em; margin-top: 0.2em; }
 /* Show/hide graphs button */
 .toggle { font-size: 0.85em; padding: 0.25em 0.7em; font-weight: 400; }
+/* Weekly metric cards + notes log */
+.card-metric { border-left: 5px solid #2d6cdf; }
+.notes-title { font-weight: 600; font-size: 0.9em; margin-top: 0.8em; color: #555; }
+.notes-wrap { max-height: 220px; overflow: auto; margin-top: 0.3em; border: 1px solid #eee; border-radius: 6px; }
+.notes-table td.note { white-space: normal; min-width: 14em; }
+.notes-empty { color: #999; font-size: 0.85em; margin-top: 0.8em; }
+/* Monthly latest review */
+.latest-grid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.radar-box { height: 320px; }
+.lists { display: grid; grid-template-columns: 1fr 1fr; gap: 1em; }
+@media (max-width: 500px) { .lists { grid-template-columns: 1fr; } }
+.lists h3 { font-size: 0.95em; margin: 0 0 0.4em; }
+.skill-list { list-style: none; margin: 0; padding: 0; font-size: 0.9em; }
+.skill-list li { display: flex; justify-content: space-between; gap: 0.5em; padding: 0.3em 0; border-bottom: 1px solid #f0f0f0; }
+.skill-list .val { white-space: nowrap; display: flex; gap: 0.4em; align-items: baseline; }
+.pos { color: #2e9d4f; font-weight: 700; }
+.neg { color: #d64545; font-weight: 700; }
+.muted { color: #999; font-size: 0.9em; }

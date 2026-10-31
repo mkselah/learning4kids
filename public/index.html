@@ -7,14 +7,20 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header><h1 id="title">Dashboard</h1></header>
+  <header>
+    <h1 id="title">Dashboard</h1>
+    <nav id="sourceSwitch" class="switch">
+      <button data-source="weekly">Weekly</button>
+      <button data-source="monthly">Monthly</button>
+    </nav>
+  </header>
   <section class="controls row">
-    <select id="tabSelect"></select>
     <button id="reloadBtn">↻ Refresh</button>
-    <label>Filter <select id="filterCol"></select> <select id="filterVal"></select></label>
+    <div id="filters" class="row"></div>
     <span id="status"></span>
   </section>
   <section id="kpis" class="kpis"></section>
+  <section id="latest" hidden></section>
   <main id="sections"></main>
   <details class="panel">
     <summary>📋 Data</summary>

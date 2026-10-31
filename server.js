@@ -1,14 +1,23 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { timingSafeEqual } from "node:crypto";
-import { listTabs, loadTab, parseSheetId } from "./lib/sheets.js";
+import { loadFirstTab, parseSheetId } from "./lib/sheets.js";
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const PASSWORD = process.env.APP_PASSWORD || "";
-const SHEET_ID = parseSheetId(process.env.SHEET_ID);
-if (!SHEET_ID) {
-  console.error("Missing SHEET_ID (put it in .env or Render environment variables).");
+// One spreadsheet per form. The first tab of each is loaded automatically.
+const SOURCES = {
+  weekly: parseSheetId(process.env.WEEKLY_SHEET_ID),
+  monthly: parseSheetId(process.env.MONTHLY_SHEET_ID),
+};
+if (!SOURCES.weekly && !SOURCES.monthly) {
+  console.error(
+    "Missing WEEKLY_SHEET_ID and MONTHLY_SHEET_ID (put them in .env or Render environment variables)."
+  );
   process.exit(1);
+}
+for (const [name, id] of Object.entries(SOURCES)) {
+  if (!id) console.warn(`Warning: ${name.toUpperCase()}_SHEET_ID is not set – the ${name} view will not work.`);
 }
 if (HOST !== "127.0.0.1" && !PASSWORD) {
   console.error("Refusing to start: APP_PASSWORD must be set when the server is public.");
@@ -20,14 +29,23 @@ function authorized(req) {
   const want = Buffer.from(PASSWORD);
   return given.length === want.length && timingSafeEqual(given, want);
 }
+function httpError(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
 const STATIC = {
   "/": ["public/index.html", "text/html; charset=utf-8"],
   "/app.js": ["public/app.js", "text/javascript; charset=utf-8"],
   "/style.css": ["public/style.css", "text/css; charset=utf-8"],
 };
 const routes = {
-  "/api/tabs": () => listTabs(SHEET_ID),
-  "/api/data": ({ tab }) => loadTab(SHEET_ID, tab),
+  "/api/data": ({ source }) => {
+    if (!Object.hasOwn(SOURCES, source)) throw httpError(400, `Unknown source "${source}"`);
+    const id = SOURCES[source];
+    if (!id) throw httpError(500, `${source.toUpperCase()}_SHEET_ID is not set on the server`);
+    return loadFirstTab(id);
+  },
 };
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -61,7 +79,7 @@ http
       send(res, 404, "Not found", "text/plain");
     } catch (e) {
       console.error(`${url.pathname} error:`, e.message);
-      send(res, 500, JSON.stringify({ error: e.message }), "application/json");
+      send(res, e.status || 500, JSON.stringify({ error: e.message }), "application/json");
     }
   })
   .listen(PORT, HOST, () => {
