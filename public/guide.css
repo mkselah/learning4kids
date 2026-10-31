@@ -1,0 +1,63 @@
+/* ---------- Skill picker (sticky on top) ---------- */
+.picker {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; gap: 0.5em; align-items: stretch;
+  background: #fff; border-bottom: 1px solid #ddd;
+  padding: 0.6em;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.picker select {
+  flex: 1; min-width: 0;
+  font-size: 16px; /* 16px stops iOS from zooming in */
+  padding: 0.55em 0.6em;
+}
+.picker button { font-size: 1.4em; line-height: 1; min-width: 46px; padding: 0 0.4em; }
+/* ---------- Layout ---------- */
+.guide { max-width: 720px; margin: 0 auto; padding: 0.8em; display: flex; flex-direction: column; gap: 0.8em; }
+.guide .card { padding: 0.9em; }
+/* Colours per points level */
+.c3 { --c: #2e9d4f; --bg: #eef8f1; }
+.c2 { --c: #7fb03a; --bg: #f3f8ea; }
+.c1 { --c: #f28e2b; --bg: #fef3e8; }
+.c0 { --c: #d64545; --bg: #fcecec; }
+/* ---------- Rubric ---------- */
+.skill-section { color: #2d6cdf; font-size: 0.8em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.skill-title { margin: 0.15em 0 0; font-size: 1.35em; }
+.skill-note { background: #fff8e1; border-left: 4px solid #edc948; padding: 0.5em 0.7em; border-radius: 6px; font-size: 0.9em; margin-top: 0.6em; }
+.levels { list-style: none; margin: 0.7em 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.5em; }
+.level { display: flex; gap: 0.7em; align-items: flex-start; padding: 0.6em; border-radius: 8px; border-left: 5px solid var(--c); background: var(--bg); }
+.level-pts {
+  flex: 0 0 2.1em; height: 2.1em; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--c); color: #fff; font-weight: 700; font-size: 1.1em;
+}
+.level-text { line-height: 1.45; font-size: 0.95em; padding-top: 0.15em; }
+/* ---------- Counter ---------- */
+.tap-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5em; margin-top: 0.3em; }
+.tap {
+  font-size: 1.6em; font-weight: 700; padding: 0.55em 0;
+  background: var(--c); color: #fff; border: none; border-radius: 10px;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.tap:active { transform: scale(0.95); filter: brightness(0.9); }
+.result { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-top: 0.8em; padding: 0.7em; background: #f3f5f9; border-radius: 8px; }
+.result-nums { font-size: 0.95em; line-height: 1.5; }
+.result-nums b { font-size: 1.1em; }
+.result-score { text-align: center; }
+.result-score .big { font-size: 2.4em; font-weight: 700; color: #2d6cdf; line-height: 1; }
+.result-score .lbl { font-size: 0.75em; color: #888; }
+.history { display: flex; flex-wrap: wrap; gap: 0.3em; margin-top: 0.6em; }
+.hist { width: 1.8em; height: 1.8em; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; font-size: 0.85em; font-weight: 700; }
+.counter-actions { display: flex; gap: 0.5em; margin-top: 0.7em; }
+.counter-actions button { flex: 1; padding: 0.6em; }
+.counter-actions button:disabled { opacity: 0.4; cursor: default; }
+/* ---------- How scoring works ---------- */
+.how { margin: 0.3em 0 0.6em; padding-left: 1.3em; line-height: 1.5; font-size: 0.92em; }
+.scale td, .scale th { white-space: normal; padding: 0.45em 0.6em; }
+.scale td.num { text-align: center; font-weight: 700; }
+.scale tr.hit td { background: #e8f0fd; font-weight: 700; color: #2d6cdf; }
+@media (max-width: 500px) {
+  header h1 { font-size: 1.15em; }
+  .guide { padding: 0.6em; }
+  .skill-title { font-size: 1.2em; }
+}
