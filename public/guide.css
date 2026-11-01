@@ -40,6 +40,7 @@
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 .tap:active { transform: scale(0.95); filter: brightness(0.9); }
+.tap:disabled { opacity: 0.5; cursor: default; }
 .result { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-top: 0.8em; padding: 0.7em; background: #f3f5f9; border-radius: 8px; }
 .result-nums { font-size: 0.95em; line-height: 1.5; }
 .result-nums b { font-size: 1.1em; }
@@ -51,6 +52,23 @@
 .counter-actions { display: flex; gap: 0.5em; margin-top: 0.7em; }
 .counter-actions button { flex: 1; padding: 0.6em; }
 .counter-actions button:disabled { opacity: 0.4; cursor: default; }
+/* ---------- Save to sheet ---------- */
+.save-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6em; }
+.field { display: flex; flex-direction: column; gap: 0.25em; font-size: 0.85em; color: #555; font-weight: 600; }
+.field input, .field select, .field textarea {
+  width: 100%; font-size: 16px; /* no iOS zoom */
+  padding: 0.5em; border: 1px solid #bbb; border-radius: 6px;
+  font-family: inherit; font-weight: 400; color: #222; background: #fff;
+  min-height: 2.6em;
+}
+.field textarea { resize: vertical; min-height: 4.5em; }
+.notes-field { margin-top: 0.6em; }
+.save-btn { width: 100%; margin-top: 0.7em; padding: 0.7em; font-size: 1.05em; font-weight: 600; }
+.save-btn:disabled { opacity: 0.45; cursor: default; }
+.msg { margin-top: 0.6em; padding: 0.5em 0.7em; border-radius: 6px; font-size: 0.9em; }
+.msg.ok { background: #eef8f1; color: #1f7a3a; }
+.msg.err { background: #fcecec; color: #b00; }
+.save-hint { margin-top: 0.5em; font-size: 0.8em; }
 /* ---------- How scoring works ---------- */
 .how { margin: 0.3em 0 0.6em; padding-left: 1.3em; line-height: 1.5; font-size: 0.92em; }
 .scale td, .scale th { white-space: normal; padding: 0.45em 0.6em; }

@@ -9,8 +9,14 @@
 </head>
 <body>
   <header>
-    <h1>Skill guide</h1>
-    <a class="nav-link" href="/">← Dashboard</a>
+    <h1 id="pageTitle">Skill guide</h1>
+    <div class="row">
+      <nav id="modeSwitch" class="switch">
+        <button data-mode="weekly">Weekly</button>
+        <button data-mode="monthly">Monthly</button>
+      </nav>
+      <a id="backLink" class="nav-link" href="/">← Dashboard</a>
+    </div>
   </header>
   <div class="picker">
     <button id="prevBtn" aria-label="Previous skill">‹</button>

@@ -143,6 +143,7 @@ function sourceFromHash() {
 function updateSwitch() {
   document.querySelectorAll("#sourceSwitch button").forEach((b) =>
     b.classList.toggle("active", b.dataset.source === source));
+  $("guideLink").href = "/guide#" + source; // open the guide in the same mode
 }
 document.querySelectorAll("#sourceSwitch button").forEach((b) => {
   b.onclick = () => { location.hash = b.dataset.source; };
