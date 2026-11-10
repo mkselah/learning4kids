@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notes analysis</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="analysis.css" />
+</head>
+<body>
+  <header>
+    <h1>🧠 Notes analysis</h1>
+    <div class="row">
+      <a class="nav-link" href="/guide#monthly">📖 Guide</a>
+      <a class="nav-link" href="/#monthly">← Dashboard</a>
+    </div>
+  </header>
+  <section class="bar">
+    <label for="session">Session date</label>
+    <select id="session"></select>
+    <button id="analyzeBtn" class="primary" disabled>Analyze</button>
+    <span id="status" class="muted"></span>
+  </section>
+  <main id="result" class="page"></main>
+  <script src="analysis.js"></script>
+</body>
+</html>

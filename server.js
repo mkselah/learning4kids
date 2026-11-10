@@ -1,11 +1,15 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { timingSafeEqual } from "node:crypto";
-import { loadFirstTab, parseSheetId, appendRow } from "./lib/sheets.js";
+import {
+  loadFirstTab, parseSheetId, appendRow, loadTabIfExists, upsertRow,
+} from "./lib/sheets.js";
+import { analyzeSession } from "./lib/analysis.js";
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const PASSWORD = process.env.APP_PASSWORD || "";
 const LOG_TAB = process.env.LOG_TAB || "Skill log";
+const ANALYSIS_TAB = process.env.ANALYSIS_TAB || "Notes analysis";
 // One spreadsheet per form. The first tab of each is loaded automatically.
 const SOURCES = {
   weekly: parseSheetId(process.env.WEEKLY_SHEET_ID),
@@ -19,6 +23,9 @@ if (!SOURCES.weekly && !SOURCES.monthly) {
 }
 for (const [name, id] of Object.entries(SOURCES)) {
   if (!id) console.warn(`Warning: ${name.toUpperCase()}_SHEET_ID is not set – the ${name} view will not work.`);
+}
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.warn("Warning: ANTHROPIC_API_KEY is not set – the notes analysis page will not work.");
 }
 if (HOST !== "127.0.0.1" && !PASSWORD) {
   console.error("Refusing to start: APP_PASSWORD must be set when the server is public.");
@@ -92,6 +99,120 @@ async function saveEntry({ source, sessionDate, type, section, skill, taps, note
     (source === "monthly" ? `score ${score}` : `avg ${round(avg, 2)}`);
   return { ok: true, tab: LOG_TAB, summary };
 }
+// ---------- Notes analysis (one row per session date) ----------
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const ANALYSIS_HEADER = [
+  "Session date", "Analyzed at", "Entries analyzed", "Summary",
+  "Strengths", "Weaknesses", "Main focus", "Secondary focus", "Data (JSON)",
+];
+const colIndex = (columns, name) =>
+  columns.findIndex((c) => c.name.trim().toLowerCase() === name.toLowerCase());
+// "2025-01-05…" or "1/5/2025…" → "2025-01-05" ("" if not a date)
+function dayOf(v) {
+  const s = String(v ?? "").trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[0];
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : "";
+}
+// All rows of the skill log: { date, section, skill, notes }
+async function logEntries(source) {
+  const d = await loadTabIfExists(sheetFor(source), LOG_TAB);
+  if (!d || !d.rows.length) return [];
+  const iDate = colIndex(d.columns, "Session date");
+  const iSection = colIndex(d.columns, "Section");
+  const iSkill = colIndex(d.columns, "Skill");
+  const iNotes = colIndex(d.columns, "Notes");
+  if ([iDate, iSection, iSkill, iNotes].includes(-1)) {
+    throw httpError(500, `Tab "${LOG_TAB}" needs the columns: Session date, Section, Skill, Notes`);
+  }
+  return d.rows
+    .map((r) => ({
+      date: dayOf(r[iDate]),
+      section: String(r[iSection] ?? "").trim(),
+      skill: String(r[iSkill] ?? "").trim(),
+      notes: String(r[iNotes] ?? "").trim(),
+    }))
+    .filter((e) => e.date);
+}
+// Saved analyses: Map "YYYY-MM-DD" -> { analysis, analyzedAt, entryCount }
+async function loadAnalyses(source) {
+  const map = new Map();
+  const d = await loadTabIfExists(sheetFor(source), ANALYSIS_TAB);
+  if (!d) return map;
+  const iDate = colIndex(d.columns, "Session date");
+  const iData = colIndex(d.columns, "Data (JSON)");
+  if (iDate === -1 || iData === -1) return map;
+  for (const r of d.rows) {
+    const day = dayOf(r[iDate]);
+    if (!day || !r[iData]) continue;
+    try { map.set(day, JSON.parse(r[iData])); } catch { /* ignore broken row */ }
+  }
+  return map;
+}
+function checkDate(date) {
+  if (!ISO_DAY.test(String(date || ""))) throw httpError(400, "Session date is missing or invalid");
+}
+// Dates that exist in the skill log
+async function listSessions({ source }) {
+  const [entries, analyses] = await Promise.all([logEntries(source), loadAnalyses(source)]);
+  const byDate = new Map();
+  for (const e of entries) {
+    if (!byDate.has(e.date)) byDate.set(e.date, { date: e.date, entries: 0, withNotes: 0 });
+    const s = byDate.get(e.date);
+    s.entries++;
+    if (e.notes) s.withNotes++;
+  }
+  const sessions = [...byDate.values()]
+    .sort((a, b) => (a.date < b.date ? 1 : -1)) // newest first
+    .map((s) => {
+      const saved = analyses.get(s.date);
+      return { ...s, analyzed: !!saved, stale: !!saved && saved.entryCount !== s.entries };
+    });
+  return { sessions };
+}
+// Saved analysis (if any) + the entries of that date
+async function getAnalysis({ source, date }) {
+  checkDate(date);
+  const [entries, analyses] = await Promise.all([logEntries(source), loadAnalyses(source)]);
+  const todays = entries.filter((e) => e.date === date);
+  const saved = analyses.get(date) || null;
+  return {
+    date,
+    entries: todays,
+    saved,
+    stale: !!saved && saved.entryCount !== todays.length,
+  };
+}
+// Runs the AI, saves the result in the analysis tab, returns it
+async function analyze({ source, date }) {
+  checkDate(date);
+  const id = sheetFor(source);
+  const todays = (await logEntries(source)).filter((e) => e.date === date);
+  if (!todays.length) throw httpError(404, "No skill log entries for this date");
+  if (!todays.some((e) => e.notes)) throw httpError(400, "None of the entries on this date have notes");
+  const analysis = await analyzeSession(date, todays);
+  const record = {
+    analysis,
+    analyzedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+    entryCount: todays.length,
+  };
+  const bullets = (list) => list.map((s) => "• " + s).join("\n");
+  const focusText = (f) => `${f.area}\n${f.why}\nTry: ${f.ideas}`;
+  const row = [
+    asText(date, 10),
+    asText(record.analyzedAt, 16),
+    todays.length,
+    asText(analysis.summary, 5000),
+    asText(bullets(analysis.strengths), 5000),
+    asText(bullets(analysis.weaknesses), 5000),
+    asText(focusText(analysis.main_focus), 5000),
+    asText(focusText(analysis.secondary_focus), 5000),
+    asText(JSON.stringify(record), 45000),
+  ];
+  await upsertRow(id, ANALYSIS_TAB, ANALYSIS_HEADER, date, row);
+  return { date, entries: todays, saved: record, stale: false, tab: ANALYSIS_TAB };
+}
 // ---------- Routes ----------
 const STATIC = {
   "/": ["public/index.html", "text/html; charset=utf-8"],
@@ -100,10 +221,16 @@ const STATIC = {
   "/guide": ["public/guide.html", "text/html; charset=utf-8"],
   "/guide.js": ["public/guide.js", "text/javascript; charset=utf-8"],
   "/guide.css": ["public/guide.css", "text/css; charset=utf-8"],
+  "/analysis": ["public/analysis.html", "text/html; charset=utf-8"],
+  "/analysis.js": ["public/analysis.js", "text/javascript; charset=utf-8"],
+  "/analysis.css": ["public/analysis.css", "text/css; charset=utf-8"],
 };
 const routes = {
-  "/api/data": ({ source }) => loadFirstTab(sheetFor(source), [LOG_TAB]),
+  "/api/data": ({ source }) => loadFirstTab(sheetFor(source), [LOG_TAB, ANALYSIS_TAB]),
   "/api/save": (body) => saveEntry(body),
+  "/api/sessions": (body) => listSessions(body),
+  "/api/analysis": (body) => getAnalysis(body),
+  "/api/analyze": (body) => analyze(body),
 };
 function readBody(req) {
   return new Promise((resolve, reject) => {

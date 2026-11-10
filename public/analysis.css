@@ -1,0 +1,32 @@
+.bar {
+  display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap;
+  background: #fff; border-bottom: 1px solid #ddd; padding: 0.8em 1em;
+}
+.bar label { font-weight: 600; }
+.bar select { min-width: 16em; max-width: 100%; font-size: 16px; }
+.bar button { min-width: 7em; }
+.bar button:disabled { opacity: 0.5; cursor: default; }
+.page { max-width: 900px; margin: 0 auto; padding: 0.8em; display: flex; flex-direction: column; gap: 0.8em; }
+.page .card { padding: 0.9em; }
+.page h2 { margin: 0 0 0.4em; font-size: 1.1em; }
+.page h3 { margin: 0.2em 0 0.4em; font-size: 1.15em; }
+.page p { margin: 0.4em 0; line-height: 1.5; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8em; }
+@media (max-width: 600px) { .cols { grid-template-columns: 1fr; } }
+.points { margin: 0; padding-left: 1.2em; line-height: 1.5; }
+.points li { margin-bottom: 0.4em; }
+.card.good { border-left: 5px solid #2e9d4f; }
+.card.bad { border-left: 5px solid #d64545; }
+.card.main { border-left: 5px solid #2d6cdf; background: #f3f7ff; }
+.card.second { border-left: 5px solid #edc948; background: #fffbea; }
+.focus-label { font-size: 0.75em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #666; }
+.ideas { font-size: 0.95em; }
+.meta { font-size: 0.85em; color: #888; }
+.msg { padding: 0.6em 0.8em; border-radius: 6px; font-size: 0.9em; }
+.msg.ok { background: #eef8f1; color: #1f7a3a; }
+.msg.err { background: #fcecec; color: #b00; }
+.msg.warn { background: #fff8e1; color: #8a6d00; }
+.empty { text-align: center; color: #777; padding: 1.5em 0.5em; }
+.notes-table td { white-space: normal; vertical-align: top; }
+.notes-table td.note { min-width: 12em; }
+.notes-table .none { color: #aaa; }
