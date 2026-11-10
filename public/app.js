@@ -78,6 +78,7 @@ const CONFIG = {
     label: "Weekly",
     filters: [
       { col: "Type", label: "Type", options: ["Training", "Match", "Freeplay"] },
+      { col: "Opponent level", label: "Level", options: ["A", "B", "C"] },
     ],
   },
   monthly: {
@@ -85,6 +86,7 @@ const CONFIG = {
     filters: [
       { col: "Event", label: "Event", options: ["Match", "Training", "Free play"] },
       { col: "Video analysis?", label: "Video", options: ["Video", "No video"] },
+      { col: "Opponent level", label: "Level", options: ["A", "B", "C"] },
     ],
   },
 };
